@@ -11,10 +11,10 @@ bool net_socket(SockInfo *sock, char *port, int backlog)
     // TODO: Error checking?
 
     memset(&sock->hints, 0, sizeof(sock->hints));
-    sock->hints->ai_family = AF_UNSPEC;       // Use either IPv4 or IPv6.
-    sock->hints->ai_socktype = SOCK_STREAM;   // ???
-    sock->hints->ai_flags = AI_PASSIVE;       // Automagically determine my own IP.
-    getaddrinfo(NULL, port, sock->hints, &sock->res);
+    sock->hints.ai_family = AF_UNSPEC;       // Use either IPv4 or IPv6.
+    sock->hints.ai_socktype = SOCK_STREAM;   // ???
+    sock->hints.ai_flags = AI_PASSIVE;       // Automagically determine my own IP.
+    getaddrinfo(NULL, port, &sock->hints, &sock->res);
 
     // Make a socket, bind it, and listen on it.
     sock->fd = socket(sock->res->ai_family, sock->res->ai_socktype, sock->res->ai_protocol);

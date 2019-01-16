@@ -14,7 +14,7 @@
 
 typedef struct SockInfo_s {
     struct addrinfo *res;
-    struct addrinfo *hints;
+    struct addrinfo hints;
     int fd;
     int backlog;
     struct sockaddr_storage ip;
