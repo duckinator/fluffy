@@ -32,6 +32,7 @@ typedef struct {
     int numusers;
     int numchans;
     bool exiting;
+    bool debug;
 } IRCD;
 
 #endif

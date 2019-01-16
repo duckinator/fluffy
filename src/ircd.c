@@ -86,12 +86,12 @@ int recv_from_clients(IRCD *ircd)
 
 int main()
 {
-    bool debug = true; // TODO: Make this a command-line flag.
     IRCD ircd;
     memset(&ircd, 0, sizeof(IRCD));
     ircd.numusers = 0;
     ircd.numchans = 0;
     ircd.exiting = false;
+    ircd.debug = true; // TODO: Make this a command-line flag.
 
     if (!net_socket(&(ircd.socket), CLIENT_CONNECT_PORT, 0)) {
         printf("[main] Error creating socket.\r\n");
@@ -114,8 +114,7 @@ int main()
        printf("Nick of first user in channel: %s; user's nick: %s\n", ircd->channels[0].users[0].nick, ircd->users[0].nick);
        */
 
-
-    if(debug) {
+    if(ircd.debug) {
         reusePort(&ircd); // MAY EXIT.
     }
 
