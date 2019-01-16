@@ -1,4 +1,3 @@
-#include <pthread.h>
 #include <sys/select.h>
 #include <unistd.h>
 #include "network.h"
@@ -13,8 +12,7 @@ void reusePort(IRCD *ircd)
     int yes=1;
     //char yes='1'; // Solaris people use this
 
-    // lose the pesky "Address already in use" error message
-    if (setsockopt(ircd->socks.ircd.fd,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(int)) == -1) {
+    if (setsockopt(ircd->socket.fd,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(int)) == -1) {
         perror("setsockopt");
         exit(1);
     }
@@ -29,7 +27,7 @@ int check_for_clients(IRCD *ircd)
 
     /* Watch stdin (fd 0) to see when it has input. */
     FD_ZERO(&rfds);
-    FD_SET(ircd->socks.ircd.fd, &rfds);
+    FD_SET(ircd->socket.fd, &rfds);
 
     /* Wait up to one second. */
     tv.tv_sec = 1;
@@ -44,7 +42,7 @@ int check_for_clients(IRCD *ircd)
         printf("[check_for_clients] Client is available now.\n");
     }
 
-    if ( net_accept(ircd->socks.ircd, ircd->users[ircd->numusers].sock) != -1 ) {
+    if ( net_accept(&ircd->socket, &ircd->users[ircd->numusers].sock) != -1 ) {
         ++ircd->numusers;
         printf("[check_for_clients] At %d users. [%d]\n", ircd->numusers, ircd->users[ircd->numusers].sock.fd);
     }
@@ -89,14 +87,25 @@ int recv_from_clients(IRCD *ircd)
 int main()
 {
     bool debug = true; // TODO: Make this a command-line flag.
-    IRCD *ircd = malloc(sizeof(IRCD));
-    ircd->numusers = 0;
-    ircd->numchans = 0;
-    ircd->exiting = 0;
+    IRCD ircd;
+    memset(&ircd, 0, sizeof(IRCD));
+    ircd.numusers = 0;
+    ircd.numchans = 0;
+    ircd.exiting = false;
 
-    ircd->socks.ircd = get_socket(CLIENT_CONNECT_PORT, 0);
-    net_bind(ircd->socks.ircd);
-    net_listen(ircd->socks.ircd);
+    if (!net_socket(&(ircd.socket), CLIENT_CONNECT_PORT, 0)) {
+        printf("[main] Error creating socket.\r\n");
+        return 1;
+    }
+    if (!net_bind(&(ircd.socket))) {
+        printf("[main] Error binding socket.\r\n");
+        return 1;
+    }
+    if (!net_listen(&(ircd.socket))) {
+        printf("[main] Error listening on socket.\r\n");
+        return 1;
+    }
+
     /*
        strcpy(ircd->users[0].nick, "test");
 
@@ -107,13 +116,13 @@ int main()
 
 
     if(debug) {
-        reusePort(ircd); // MAY EXIT.
+        reusePort(&ircd); // MAY EXIT.
     }
 
-    while(!(ircd->exiting)) {
-        check_for_clients(ircd);
-        recv_from_clients(ircd);
+    while(!ircd.exiting) {
+        check_for_clients(&ircd);
+        recv_from_clients(&ircd);
     }
 
-    pthread_exit(NULL);
+    return 0;
 }

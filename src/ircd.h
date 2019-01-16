@@ -26,12 +26,7 @@ typedef struct {
 } Channel;
 
 typedef struct {
-    SockInfo ircd;
-    SockInfo links[SERVER_MAX_LINKS];
-} Socket_fds;
-
-typedef struct {
-    Socket_fds socks;
+    SockInfo socket;
     User users[SERVER_MAX_USERS];
     Channel channels[SERVER_MAX_CHANNELS];
     int numusers;

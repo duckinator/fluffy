@@ -2,6 +2,7 @@
 #define FLUFFY_NETWORK_H
 
 #include "config.h"
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,9 +21,9 @@ typedef struct SockInfo_s {
     socklen_t ip_size;
 } SockInfo;
 
-SockInfo get_socket(char *port, int backlog);
-int net_bind(SockInfo sock);
-int net_listen(SockInfo sock);
-int net_accept(SockInfo sock, SockInfo user);
+bool net_socket(SockInfo *sock, char *port, int backlog);
+int net_bind(SockInfo *sock);
+int net_listen(SockInfo *sock);
+int net_accept(SockInfo *sock, SockInfo *usersock);
 
 #endif
