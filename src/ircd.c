@@ -97,11 +97,11 @@ int main()
         printf("[main] Error creating socket.\r\n");
         return 1;
     }
-    if (!net_bind(&(ircd.socket))) {
+    if (net_bind(&(ircd.socket)) < 0) {
         printf("[main] Error binding socket.\r\n");
         return 1;
     }
-    if (!net_listen(&(ircd.socket))) {
+    if (net_listen(&(ircd.socket)) < 0) {
         printf("[main] Error listening on socket.\r\n");
         return 1;
     }
