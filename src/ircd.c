@@ -19,37 +19,41 @@ void reusePort(IRCD *ircd)
 }
 
 
-int check_for_clients(IRCD *ircd)
+ssize_t recv_from_user(IRCD *ircd, int usernum)
 {
-    fd_set rfds;
-    struct timeval tv;
-    int retval;
+    User *user = &ircd->users[usernum];
+    int fd = user->sock.fd;
+    char buffer[513];
+    ssize_t ret = recv(fd, &buffer, 512, 0);
 
-    /* Watch stdin (fd 0) to see when it has input. */
-    FD_ZERO(&rfds);
-    FD_SET(ircd->socket.fd, &rfds);
-
-    /* Wait up to one second. */
-    tv.tv_sec = 1;
-    tv.tv_usec = 0;
-
-    retval = select(1, &rfds, NULL, NULL, &tv);
-    if (retval == -1) {
-        fprintf(stderr, "[check_for_clients] select()\n");
-    } else if (retval == 0) {
-        printf("[check_for_clients] Timeout occured, no new connection.\n");
-    } else {
-        printf("[check_for_clients] Client is available now.\n");
+    if (ret < 0) {
+        printf("[read_from_user] Error during recv().\n");
+        return ret;
     }
 
-    if ( net_accept(&ircd->socket, &ircd->users[ircd->numusers].sock) != -1 ) {
-        ++ircd->numusers;
-        printf("[check_for_clients] At %d users. [%d]\n", ircd->numusers, ircd->users[ircd->numusers].sock.fd);
+    // TODO: Handle anything beyond the expected 512 bytes.
+
+    printf("[%i %s] RECV %zi: '%s'\n", usernum, "", ret, buffer);
+
+    return ret;
+}
+
+int accept_client(IRCD *ircd)
+{
+    int ret = net_accept(&ircd->socket, &ircd->users[ircd->numusers].sock);
+
+    if (ret < 0) {
+        printf("[accept_client] Error with net_accept().\n");
+        return ret;
     }
+
+    ircd->numusers++;
+    printf("[check_for_clients] At %d users. [%d]\n", ircd->numusers, ircd->users[ircd->numusers].sock.fd);
+
     return 0;
 }
 
-int recv_from_clients(IRCD *ircd)
+int poll_sockets(IRCD *ircd)
 {
     fd_set rfds;
     struct timeval tv;
@@ -58,8 +62,11 @@ int recv_from_clients(IRCD *ircd)
 
     /* Watch stdin (fd 0) to see when it has input. */
     FD_ZERO(&rfds);
+    FD_SET(ircd->socket.fd, &rfds);
     for(i = 0; i < ircd->numusers; i++) {
-        printf("[recv_from_clients] Adding user %i to rfds\n", i);
+        if (ircd->debug) {
+            printf("[poll_sockets] Adding user %i to rfds.\n", i);
+        }
         FD_SET(ircd->users[i].sock.fd, &rfds);
     }
 
@@ -67,23 +74,36 @@ int recv_from_clients(IRCD *ircd)
     tv.tv_sec = 1;
     tv.tv_usec = 0;
 
-    retval = select(i+1, &rfds, NULL, NULL, &tv);
+//    retval = select(i + 2, &rfds, NULL, NULL, &tv);
+    // TODO: Actually set nfds (first arg) correctly.
+    retval = select(1000, &rfds, NULL, NULL, &tv);
 
     if (retval == -1) {
         // TODO: Include error information from errno.
-        fprintf(stderr, "[recv_from_clients] select() error\n");
+        fprintf(stderr, "[poll_sockets] select() error\n");
         return -1;
     }
 
     if (retval == 0) {
-        printf("[recv_from_clients] Timeout occured, no new data.\n");	
+        if (ircd->debug) {
+            printf("[poll_sockets] Timeout occured, no new data.\n");
+        }
         return 0;
     }
 
-    printf("[recv_from_clients] Data is available now. [%i]\n", retval);
+    printf("[poll_sockets] Data is available now. [%i]\n", retval);
+
+    if (FD_ISSET(ircd->socket.fd, &rfds)) {
+        printf("[poll_sockets] New connection.\n");
+        accept_client(ircd);
+    }
+
     for(i = 0; i < ircd->numusers; i++) {
         if(FD_ISSET(ircd->users[i].sock.fd, &rfds)) {
-            printf("[recv_from_clients] Data from user #%i\n", i);
+            if (ircd->debug) {
+                printf("[poll_sockets] Data from user #%i\n", i);
+            }
+            recv_from_user(ircd, i);
         }
     }
 
@@ -125,8 +145,7 @@ int main()
     }
 
     while(!ircd.exiting) {
-        check_for_clients(&ircd);
-        recv_from_clients(&ircd);
+        poll_sockets(&ircd);
     }
 
     return 0;
