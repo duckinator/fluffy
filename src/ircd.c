@@ -68,16 +68,22 @@ int recv_from_clients(IRCD *ircd)
     tv.tv_usec = 0;
 
     retval = select(i+1, &rfds, NULL, NULL, &tv);
+
     if (retval == -1) {
+        // TODO: Include error information from errno.
         fprintf(stderr, "[recv_from_clients] select() error\n");
-    } else if (retval == 0) {
+        return -1;
+    }
+
+    if (retval == 0) {
         printf("[recv_from_clients] Timeout occured, no new data.\n");	
-    } else {
-        printf("[recv_from_clients] Data is available now. [%i]\n", retval);
-        for(i = 0; i < ircd->numusers; i++) {
-            if(FD_ISSET(ircd->users[i].sock.fd, &rfds)) {
-                printf("[recv_from_clients] Data from user #%i\n", i);
-            }
+        return 0;
+    }
+
+    printf("[recv_from_clients] Data is available now. [%i]\n", retval);
+    for(i = 0; i < ircd->numusers; i++) {
+        if(FD_ISSET(ircd->users[i].sock.fd, &rfds)) {
+            printf("[recv_from_clients] Data from user #%i\n", i);
         }
     }
 
